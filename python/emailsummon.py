@@ -221,7 +221,7 @@ class LinkedInEmailRetriever:
            
            
             # Save a screenshot for debugging
-            self.driver.save_screenshot(f"contact_info_{int(time.time())}.png")
+            # self.driver.save_screenshot(f"contact_info_{int(time.time())}.png")
             
             # Look for email - try multiple approaches
             email = None
@@ -353,11 +353,20 @@ class LinkedInEmailRetriever:
                 self.driver.quit()
 
 if __name__ == "__main__":
+ # Record the start time
+    start_time = time.time()
+    
     # Load environment variables from .env file
     retriever = LinkedInEmailRetriever(
         username=os.getenv("LINKEDIN_USERNAME"),
         password=os.getenv("LINKEDIN_PASSWORD"),
-        max_daily_contacts=5
+        max_daily_contacts=10
     )
     
+    # Process daily contacts
     retriever.process_daily_contacts()
+    
+    # Calculate and log the total time taken
+    end_time = time.time()
+    total_time = end_time - start_time
+    logging.info(f"Script completed in {total_time:.2f} seconds.")
