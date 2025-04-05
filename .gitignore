@@ -21,6 +21,10 @@ dist/
 build/
 *.env
 
+
+# Temporary folders
+tempoutput/
+
 # IDEs and editors
 .vscode/
 .idea/
