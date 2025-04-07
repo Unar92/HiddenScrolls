@@ -92,32 +92,48 @@ def extract_physical_address(page_source):
     return address_candidates[0] if address_candidates else "No address found"
 
 
+from PIL import Image
+
 def take_full_page_screenshot(driver, save_path):
     """
-    Scroll to the bottom of the page to calculate the full height, then take a screenshot.
+    Capture a full-page screenshot by scrolling through the page and stitching viewports together.
     """
     try:
-        # Scroll to the bottom of the page to load all content
-        last_height = driver.execute_script("return document.body.scrollHeight")
-        while True:
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(1)  # Wait for lazy-loaded content to load
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                break
-            last_height = new_height
+        # Get the total height of the page
+        total_height = driver.execute_script("return document.body.scrollHeight")
+        viewport_height = driver.execute_script("return window.innerHeight")
+        driver_width = driver.execute_script("return window.innerWidth")
 
-        # Adjust the browser window size to the full height
-        full_height = driver.execute_script("return document.body.scrollHeight")
-        full_width = driver.execute_script("return document.body.scrollWidth")
-        driver.set_window_size(full_width, full_height)
+        # Set the browser window size to match the viewport width and height
+        driver.set_window_size(driver_width, viewport_height)
 
-        # Take the screenshot
-        driver.save_screenshot(save_path)
-        print(f"Full page screenshot saved to: {save_path}")
+        # Create a blank image to stitch screenshots
+        stitched_image = Image.new('RGB', (driver_width, total_height))
+
+        # Scroll through the page and capture screenshots
+        current_scroll = 0
+        while current_scroll < total_height:
+            # Scroll to the current position
+            driver.execute_script(f"window.scrollTo(0, {current_scroll})")
+            time.sleep(0.5)  # Allow time for animations or dynamic content to load
+
+            # Capture the current viewport screenshot
+            screenshot = driver.get_screenshot_as_png()
+            screenshot_image = Image.open(io.BytesIO(screenshot))
+
+            # Paste the screenshot into the stitched image
+            stitched_image.paste(screenshot_image, (0, current_scroll))
+
+            # Move to the next scroll position
+            current_scroll += viewport_height
+
+        # Save the stitched image
+        stitched_image.save(save_path)
+        print(f"Full-page screenshot saved to: {save_path}")
+
     except Exception as e:
-        print(f"Error taking full-page screenshot: {e}")     
-        
+        print(f"Error taking full-page screenshot: {e}")
+
 def handle_captcha(driver):
     """
     Detect and handle CAPTCHA by pausing for manual intervention.
