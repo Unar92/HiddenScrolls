@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Image Jigsaw Puzzle</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            text-align: center;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin: 10px 0;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+        }
+
+        h3 {
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            margin: 10px 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-area {
+            position: relative;
+            margin: 20px auto;
+            border: 2px solid #333;
+            background-color: #eee;
+            touch-action: none;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 1 / 1;
+        }
+
+        .puzzle-piece {
+            position: absolute;
+            cursor: move;
+            background-size: cover;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: box-shadow 0.2s;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .puzzle-piece.correct {
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+        }
+
+        .puzzle-piece:hover {
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+        }
+
+        .controls {
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        button, select {
+            padding: clamp(8px, 2vw, 15px);
+            font-size: clamp(14px, 3vw, 16px);
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        input {
+            padding: clamp(8px, 2vw, 10px);
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .image-upload {
+            margin: 15px 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .preview-image, .reference-image {
+            max-width: min(200px, 80vw);
+            max-height: 200px;
+            margin: 10px auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        .timer, .piece-counter {
+            font-size: clamp(14px, 3vw, 18px);
+            margin: 10px 0;
+        }
+
+        .difficulty-controls {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .difficulty-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button, select {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        .congratulations {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: clamp(15px, 4vw, 25px);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+            width: 90%;
+            max-width: 300px;
+        }
+
+        .congratulations h2 {
+            font-size: clamp(1.2rem, 5vw, 1.8rem);
+            margin-bottom: 10px;
+        }
+
+        .reference {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stats {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .game-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .file-input-wrapper {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .url-input-wrapper {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 768px) {
+            .url-input-wrapper {
+                flex-direction: row;
+                gap: 10px;
+            }
+
+            .url-input-wrapper button {
+                width: auto;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #222;
+                color: #eee;
+            }
+            
+            .container {
+                background-color: #333;
+                color: #fff;
+            }
+            
+            h1, h3 {
+                color: #fff;
+            }
+            
+            .game-area {
+                border-color: #555;
+                background-color: #444;
+            }
+            
+            input {
+                background-color: #444;
+                color: #fff;
+                border: 1px solid #666;
+            }
+            
+            .congratulations {
+                background-color: rgba(51, 51, 51, 0.95);
+                color: #fff;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Custom Image Jigsaw Puzzle</h1>
+        
+        <div class="image-upload">
+            <h3>Upload Your Image</h3>
+            <div class="file-input-wrapper">
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+            
+            <div class="url-input-wrapper">
+                <input type="text" id="imageUrl" placeholder="Or enter image URL">
+                <button id="loadUrlImage">Load URL</button>
+            </div>
+            
+            <img id="previewImage" class="preview-image" src="/api/placeholder/400/300" alt="Preview">
+        </div>
+        
+        <div class="difficulty-controls">
+            <select id="difficulty">
+                <option value="3">Easy (3x3)</option>
+                <option value="4" selected>Medium (4x4)</option>
+                <option value="5">Hard (5x5)</option>
+                <option value="6">Very Hard (6x6)</option>
+                <option value="8">Expert (8x8)</option>
+            </select>
+            <button id="startGame">Start Puzzle</button>
+        </div>
+        
+        <div class="stats">
+            <div class="timer">Time: 0:00</div>
+            <div class="piece-counter">Pieces in correct position: 0/0</div>
+        </div>
+        
+        <div id="gameArea" class="game-area">
+            <!-- Puzzle pieces will be added here -->
+            <div class="congratulations" id="congratsMessage">
+                <h2>Congratulations!</h2>
+                <p>You completed the puzzle!</p>
+                <p id="finalTime"></p>
+                <button id="playAgain">Play Again</button>
+            </div>
+        </div>
+        
+        <div class="reference">
+            <h3>Reference Image</h3>
+            <img id="referenceImage" class="reference-image" src="/api/placeholder/400/300" alt="Reference">
+        </div>
+        
+        <div class="game-controls">
+            <button id="resetButton">Reset Puzzle</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let puzzlePieces = [];
+        let gridSize = 4;
+        let gameStarted = false;
+        let gameImage = new Image();
+        let startTime = null;
+        let timerInterval = null;
+        let correctPieces = 0;
+        let isDragging = false;
+        let draggedPiece = null;
+        let offsetX, offsetY;
+        let pieceWidth, pieceHeight;
+        let lastTouchTime = 0;
+        
+        // DOM Elements
+        const gameArea = document.getElementById('gameArea');
+        const previewImage = document.getElementById('previewImage');
+        const referenceImage = document.getElementById('referenceImage');
+        const imageUpload = document.getElementById('imageUpload');
+        const imageUrl = document.getElementById('imageUrl');
+        const loadUrlButton = document.getElementById('loadUrlImage');
+        const difficultySelect = document.getElementById('difficulty');
+        const startButton = document.getElementById('startGame');
+        const resetButton = document.getElementById('resetButton');
+        const timerDisplay = document.querySelector('.timer');
+        const pieceCounter = document.querySelector('.piece-counter');
+        const congratsMessage = document.getElementById('congratsMessage');
+        const finalTime = document.getElementById('finalTime');
+        const playAgainButton = document.getElementById('playAgain');
+        
+        // Event listeners
+        imageUpload.addEventListener('change', handleImageUpload);
+        loadUrlButton.addEventListener('click', loadImageFromUrl);
+        startButton.addEventListener('click', startGame);
+        resetButton.addEventListener('click', resetGame);
+        playAgainButton.addEventListener('click', resetGame);
+        window.addEventListener('resize', handleWindowResize);
+        
+        // Handle image upload
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    gameImage.src = event.target.result;
+                    gameImage.onload = function() {
+                        previewImage.src = gameImage.src;
+                        referenceImage.src = gameImage.src;
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // Load image from URL
+        function loadImageFromUrl() {
+            const url = imageUrl.value.trim();
+            if (url) {
+                // Using placeholder API for demonstration
+                // In real-world use, you'd use the actual URL provided
+                gameImage.src = "/api/placeholder/400/400";
+                gameImage.onload = function() {
+                    previewImage.src = gameImage.src;
+                    referenceImage.src = gameImage.src;
+                };
+                imageUrl.value = '';
+            }
+        }
+        
+        // Handle window resize
+        function handleWindowResize() {
+            if (gameStarted) {
+                // Recalculate piece dimensions
+                updateGameDimensions();
+                
+                // Update piece positions
+                const pieces = document.querySelectorAll('.puzzle-piece');
+                pieces.forEach(pieceElement => {
+                    const pieceId = parseInt(pieceElement.dataset.id);
+                    const piece = puzzlePieces.find(p => p.id === pieceId);
+                    
+                    // Update piece size
+                    pieceElement.style.width = pieceWidth + 'px';
+                    pieceElement.style.height = pieceHeight + 'px';
+                    
+                    // Update background size
+                    pieceElement.style.backgroundSize = `${gameArea.offsetWidth}px ${gameArea.offsetHeight}px`;
+                    
+                    // Update background position
+                    const bgPosX = -(piece.correctCol * pieceWidth);
+                    const bgPosY = -(piece.correctRow * pieceHeight);
+                    pieceElement.style.backgroundPosition = `${bgPosX}px ${bgPosY}px`;
+                    
+                    // Update position
+                    pieceElement.style.left = (piece.currentCol * pieceWidth) + 'px';
+                    pieceElement.style.top = (piece.currentRow * pieceHeight) + 'px';
+                });
+            }
+        }
+        
+        // Update game dimensions based on current screen size
+        function updateGameDimensions() {
+            // Get the current game area size
+            const gameSize = gameArea.offsetWidth;
+            
+            // Calculate piece dimensions
+            pieceWidth = gameSize / gridSize;
+            pieceHeight = gameSize / gridSize;
+        }
+        
+        // Start the puzzle game
+        function startGame() {
+            if (!gameImage.src || gameImage.src === window.location.href) {
+                alert("Please upload an image or enter an image URL first.");
+                return;
+            }
+            
+            // Clear previous game
+            clearGame();
+            
+            // Get difficulty level
+            gridSize = parseInt(difficultySelect.value);
+            
+            // Calculate piece dimensions
+            updateGameDimensions();
+            
+            // Create puzzle pieces
+            createPuzzlePieces();
+            
+            // Start timer
+            startTime = new Date();
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // Update counter
+            updatePieceCounter();
+            
+            gameStarted = true;
+        }
+        
+        // Create puzzle pieces
+        function createPuzzlePieces() {
+            puzzlePieces = [];
+            const totalPieces = gridSize * gridSize;
+            
+            // Create pieces array
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    puzzlePieces.push({
+                        id: row * gridSize + col,
+                        correctRow: row,
+                        correctCol: col,
+                        currentRow: null,
+                        currentCol: null,
+                        x: null,
+                        y: null,
+                        isCorrect: false
+                    });
+                }
+            }
+            
+            // Shuffle pieces
+            shufflePieces();
+            
+            // Create DOM elements for pieces
+            for (const piece of puzzlePieces) {
+                const pieceElement = document.createElement('div');
+                pieceElement.className = 'puzzle-piece';
+                pieceElement.dataset.id = piece.id;
+                
+                // Calculate background position to show the right part of the image
+                const bgPosX = -(piece.correctCol * pieceWidth);
+                const bgPosY = -(piece.correctRow * pieceHeight);
+                
+                // Apply styles
+                pieceElement.style.width = pieceWidth + 'px';
+                pieceElement.style.height = pieceHeight + 'px';
+                pieceElement.style.backgroundImage = `url(${gameImage.src})`;
+                pieceElement.style.backgroundPosition = `${bgPosX}px ${bgPosY}px`;
+                pieceElement.style.backgroundSize = `${gameArea.offsetWidth}px ${gameArea.offsetHeight}px`;
+                
+                // Position the piece
+                pieceElement.style.left = piece.x + 'px';
+                pieceElement.style.top = piece.y + 'px';
+                
+                // Add event listeners for dragging
+                pieceElement.addEventListener('mousedown', startDrag);
+                pieceElement.addEventListener('touchstart', startDrag, { passive: false });
+                
+                // Add to game area
+                gameArea.appendChild(pieceElement);
+            }
+            
+            // Add event listeners for dropping
+            document.addEventListener('mousemove', moveDrag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchmove', moveDrag, { passive: false });
+            document.addEventListener('touchend', endDrag);
+        }
+        
+        // Shuffle pieces
+        function shufflePieces() {
+            // Create temporary positions array
+            const positions = [];
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    positions.push({ row, col });
+                }
+            }
+            
+            // Shuffle positions
+            for (let i = positions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [positions[i], positions[j]] = [positions[j], positions[i]];
+            }
+            
+            // Assign positions to pieces
+            for (let i = 0; i < puzzlePieces.length; i++) {
+                const piece = puzzlePieces[i];
+                const pos = positions[i];
+                piece.currentRow = pos.row;
+                piece.currentCol = pos.col;
+                piece.x = pos.col * pieceWidth;
+                piece.y = pos.row * pieceHeight;
+                piece.isCorrect = (piece.correctRow === pos.row && piece.correctCol === pos.col);
+                if (piece.isCorrect) correctPieces++;
+            }
+        }
+        
+        // Start dragging a piece
+        function startDrag(e) {
+            e.preventDefault();
+            
+            let clientX, clientY;
+            
+            if (e.type === 'touchstart') {
+                // Prevent double firing of events on touch devices
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTouchTime;
+                lastTouchTime = currentTime;
+                if (tapLength < 500 && tapLength > 0) {
+                    return;
+                }
+                
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const pieceElement = e.target;
+            draggedPiece = pieceElement;
+            
+            // Calculate offset for smooth dragging
+            const rect = pieceElement.getBoundingClientRect();
+            offsetX = clientX - rect.left;
+            offsetY = clientY - rect.top;
+            
+            // Bring to front
+            pieceElement.style.zIndex = '1000';
+            isDragging = true;
+        }
+        
+        // Move the piece during drag
+        function moveDrag(e) {
+            if (!isDragging || !draggedPiece) return;
+            e.preventDefault();
+            
+            let clientX, clientY;
+            
+            if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const gameRect = gameArea.getBoundingClientRect();
+            let left = clientX - gameRect.left - offsetX;
+            let top = clientY - gameRect.top - offsetY;
+            
+            // Keep piece within game area
+            left = Math.max(0, Math.min(left, gameArea.offsetWidth - pieceWidth));
+            top = Math.max(0, Math.min(top, gameArea.offsetHeight - pieceHeight));
+            
+            draggedPiece.style.left = left + 'px';
+            draggedPiece.style.top = top + 'px';
+        }
+        
+        // End dragging and snap to grid
+        function endDrag(e) {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            if (!draggedPiece) return;
+            
+            // Find nearest grid position
+            const left = parseInt(draggedPiece.style.left);
+            const top = parseInt(draggedPiece.style.top);
+            
+            const col = Math.round(left / pieceWidth);
+            const row = Math.round(top / pieceHeight);
+            
+            // Ensure within grid boundaries
+            const boundedCol = Math.max(0, Math.min(col, gridSize - 1));
+            const boundedRow = Math.max(0, Math.min(row, gridSize - 1));
+            
+            // Snap to grid
+            draggedPiece.style.left = (boundedCol * pieceWidth) + 'px';
+            draggedPiece.style.top = (boundedRow * pieceHeight) + 'px';
+            
+            // Update piece position in array
+            const pieceId = parseInt(draggedPiece.dataset.id);
+            const piece = puzzlePieces.find(p => p.id === pieceId);
+            
+            // Check if there's already a piece at the target position
+            const pieceAtTarget = puzzlePieces.find(p => p.currentRow === boundedRow && p.currentCol === boundedCol);
+            
+            if (pieceAtTarget && pieceAtTarget !== piece) {
+                // Swap positions
+                const oldRow = piece.currentRow;
+                const oldCol = piece.currentCol;
+                
+                piece.currentRow = boundedRow;
+                piece.currentCol = boundedCol;
+                
+                pieceAtTarget.currentRow = oldRow;
+                pieceAtTarget.currentCol = oldCol;
+                
+                // Update DOM for the other piece
+                const otherElement = document.querySelector(`.puzzle-piece[data-id="${pieceAtTarget.id}"]`);
+                otherElement.style.left = (oldCol * pieceWidth) + 'px';
+                otherElement.style.top = (oldRow * pieceHeight) + 'px';
+                
+                // Check if other piece is now correct
+                const wasCorrect = pieceAtTarget.isCorrect;
+                pieceAtTarget.isCorrect = (pieceAtTarget.correctRow === oldRow && pieceAtTarget.correctCol === oldCol);
+                if (!wasCorrect && pieceAtTarget.isCorrect) {
+                    correctPieces++;
+                    otherElement.classList.add('correct');
+                } else if (wasCorrect && !pieceAtTarget.isCorrect) {
+                    correctPieces--;
+                    otherElement.classList.remove('correct');
+                }
+            } else {
+                piece.currentRow = boundedRow;
+                piece.currentCol = boundedCol;
+            }
+            
+            // Check if piece is in correct position
+            const wasCorrect = piece.isCorrect;
+            piece.isCorrect = (piece.correctRow === boundedRow && piece.correctCol === boundedCol);
+            
+            if (!wasCorrect && piece.isCorrect) {
+                correctPieces++;
+                draggedPiece.classList.add('correct');
+            } else if (wasCorrect && !piece.isCorrect) {
+                correctPieces--;
+                draggedPiece.classList.remove('correct');
+            }
+            
+            // Reset z-index
+            draggedPiece.style.zIndex = '';
+            draggedPiece = null;
+            
+            // Update counter
+            updatePieceCounter();
+            
+            // Check if puzzle is complete
+            checkCompletion();
+        }
+        
+        // Update timer display
+        function updateTimer() {
+            if (!startTime) return;
+            
+            const elapsed = Math.floor((new Date() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            timerDisplay.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Update piece counter
+        function updatePieceCounter() {
+            pieceCounter.textContent = `Pieces in correct position: ${correctPieces}/${puzzlePieces.length}`;
+        }
+        
+        // Check if puzzle is complete
+        function checkCompletion() {
+            if (correctPieces === puzzlePieces.length) {
+                // Stop timer
+                clearInterval(timerInterval);
+                
+                // Show congratulations message
+                const elapsed = Math.floor((new Date() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                
+                finalTime.textContent = `You completed the puzzle in ${minutes}:${seconds.toString().padStart(2, '0')}!`;
+                congratsMessage.style.display = 'block';
+            }
+        }
+        
+        // Clear the game
+        function clearGame() {
+            // Clear timer
+            clearInterval(timerInterval);
+            startTime = null;
+            timerDisplay.textContent = 'Time: 0:00';
+            
+            // Clear pieces
+            const pieces = document.querySelectorAll('.puzzle-piece');
+            pieces.forEach(piece => piece.remove());
+            
+            // Reset variables
+            puzzlePieces = [];
+            correctPieces = 0;
+            
+            // Hide congratulations message
+            congratsMessage.style.display = 'none';
+        }
+        
+        // Reset game to play again
+        function resetGame() {
+            clearGame();
+            if (gameImage.src && gameImage.src !== window.location.href) {
+                startGame();
+            }
+        }
+        
+        // Initial setup - load default image
+        window.onload = function() {
+            gameImage.src = "/api/placeholder/400/400";
+            gameImage.onload = function() {
+                previewImage.src = gameImage.src;
+                referenceImage.src = gameImage.src;
+            };
+        };
+    </script>
+</body>
+</html>
